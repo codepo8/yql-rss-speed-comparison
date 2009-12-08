@@ -42,23 +42,12 @@ function get($url){
   curl_close($ch);
   return $output;
 }
-function display($data){
-  foreach($data as $d){
-    $obj = simplexml_load_string($d);
-    echo '<div><h2><a href="'.$obj->channel->link.'">'.
-          $obj->channel->title.'</a></h2>';
-    echo '<ul>';
-    foreach($obj->channel->item as $i){
-      echo '<li><a href="'.$i->link.'">'.$i->title.'</a></li>';
-    }
-    echo '</ul></div>';
-  }
-}
 ?>
 <ul id="nav">
   <li><strong>Using simple cURL</strong></li>
   <li><a href="multicurl.php">Using multi cURL</a></li>
   <li><a href="yqlcurl.php">Using YQL</a></li>
+  <li><strong>Using YQL executable</strong></li>
 </ul>
 
 </body>

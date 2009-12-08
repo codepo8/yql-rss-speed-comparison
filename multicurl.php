@@ -92,6 +92,7 @@ echo '<p>Time spent: <strong>' . (microtime(true)-$oldtime) .'</strong></p>';
   <li><a href="simplecurl.php">Using simple cURL</a></li>
   <li><strong>Using multi cURL</strong></li>
   <li><a href="yqlcurl.php">Using YQL</a></li>
+  <li><a href="yqltable.php">Using YQL executable</a></li>
 </ul>
 </body>
 </html>

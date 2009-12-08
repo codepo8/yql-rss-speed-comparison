@@ -66,6 +66,7 @@ function display($data){
   <li><a href="simplecurl.php">Using simple cURL</a></li>
   <li><a href="multicurl.php">Using multi cURL</a></li>
   <li><strong>Using YQL</strong></li>
+  <li><a href="yqltable.php">Using YQL executable</a></li>
 </ul>
 </body>
 </html>
