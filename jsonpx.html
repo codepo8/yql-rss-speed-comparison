@@ -1,0 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+ "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">  
+  <title></title>
+  <link rel="stylesheet" href="http://yui.yahooapis.com/2.7.0/build/reset-fonts-grids/reset-fonts-grids.css" type="text/css">
+  <link rel="stylesheet" href="http://yui.yahooapis.com/2.7.0/build/base/base.css" type="text/css">
+</head>
+<body>
+<div id="doc" class="yui-t7">
+  <div id="hd" role="banner"><h1></h1></div>
+  <div id="bd" role="main">
+    <div id="feeds"></div>
+  </div>
+  <div id="ft" role="contentinfo"><p></p></div>
+</div>
+<script type="text/javascript" charset="utf-8">
+function feeds(o){
+  var f = document.getElementById('feeds');
+  f.innerHTML = o.results;
+}  
+</script>
+<script type="text/javascript" src="http://query.yahooapis.com/v1/public/yql?q=use%20%27http%3A%2F%2Fgithub.com%2Fcodepo8%2Fyql-rss-speed-comparison%2Fraw%2Fmaster%2Frss.multi.list.xml%27%20as%20m%3Bselect%20*%20from%20m%20where%20feeds%3D%22%27http%3A%2F%2Fcode.flickr.com%2Fblog%2Ffeed%2Frss%2F%27%2C%27http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%27%2C%27http%3A%2F%2Fwww.stevesouders.com%2Fblog%2Ffeed%2Frss%27%2C%27http%3A%2F%2Fwww.yqlblog.net%2Fblog%2Ffeed%2F%27%2C%27http%3A%2F%2Fwww.quirksmode.org%2Fblog%2Findex.xml%27%22%20and%20html%3D%27true%27&format=xml&callback=feeds&diagnostics=false"></script>
+</body>
+</html>

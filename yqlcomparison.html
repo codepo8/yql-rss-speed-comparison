@@ -1,0 +1,233 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+ "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">  
+  <title>Speeding up RSS aggregation by using a faster, free server</title>
+  <link rel="stylesheet" href="http://yui.yahooapis.com/2.7.0/build/reset-fonts-grids/reset-fonts-grids.css" type="text/css">
+  <link rel="stylesheet" href="http://yui.yahooapis.com/2.7.0/build/base/base.css" type="text/css">
+  <style type="text/css" media="screen">
+pre{overflow:auto;width:90%;padding:1em;}  </style>
+</head>
+<body>
+<div id="doc" class="yui-t7">
+  <div id="hd" role="banner"><h1>Speeding up RSS aggregation by using a faster, free server</h1></div>
+  <div id="bd" role="main">
+
+    <p>RSS is a wonderful format to get information from all kind of different sources. It is dead easy to provide, has a predictable (albeit limited) format and is very easy to use. The problem of course is that with the amount of different feeds used in one page its performance goes down. </p>
+
+    <p>The reason is the classic HTTP request issue - the more you negotiate, find and pull the slower your page renders. Therefore you need to try to shorten the time the calls happen.</p> 
+
+    <p>Say you want to pull the following five RSS feeds and display them:</p>
+
+    <ul><li>http://code.flickr.com/blog/feed/rss/</li>
+    <li>http://feeds.delicious.com/v2/rss/codepo8?count=15</li>
+    <li>http://www.stevesouders.com/blog/feed/rss</li>
+    <li>http://www.yqlblog.net/blog/feed/</li>
+    <li>http://www.quirksmode.org/blog/index.xml</li></ul>
+
+    <p>The least effective way of doing that is pulling and displaying them one after the other:</p>
+
+<p><a href="http://www.flickr.com/photos/codepo8/4167643524/"><img src="http://farm5.static.flickr.com/4002/4167643524_55c4d72f1e.jpg" alt="Retrieving five RSS feeds using curl takes about 11 seconds."></a></p>
+
+<pre><code>$oldtime = microtime(true);
+$url = &#x27;http://code.flickr.com/blog/feed/rss/&#x27;;
+$content[] = get($url);
+$url = &#x27;http://feeds.delicious.com/v2/rss/codepo8?count=15&#x27;;
+$content[] = get($url);
+$url = &#x27;http://www.stevesouders.com/blog/feed/rss&#x27;;
+$content[] = get($url);
+$url = &#x27;http://www.yqlblog.net/blog/feed/&#x27;;
+$content[] = get($url);
+$url = &#x27;http://www.quirksmode.org/blog/index.xml&#x27;;
+$content[] = get($url);
+display($content);
+echo &#x27;&lt;p&gt;Time spent: &lt;strong&gt;&#x27; . (microtime(true)-$oldtime) .&#x27;&lt;/strong&gt;&lt;/p&gt;&#x27;;
+function get($url){
+  $ch = curl_init(); 
+  curl_setopt($ch, CURLOPT_URL, $url); 
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+  $output = curl_exec($ch); 
+  curl_close($ch);
+  return $output;
+}
+function display($data){
+  foreach($data as $d){
+    $obj = simplexml_load_string($d);
+    echo &#x27;&lt;div&gt;&lt;h2&gt;&lt;a href=&quot;&#x27;.$obj-&gt;channel-&gt;link.&#x27;&quot;&gt;&#x27;.
+          $obj-&gt;channel-&gt;title.&#x27;&lt;/a&gt;&lt;/h2&gt;&#x27;;
+    echo &#x27;&lt;ul&gt;&#x27;;
+    foreach($obj-&gt;channel-&gt;item as $i){
+      echo &#x27;&lt;li&gt;&lt;a href=&quot;&#x27;.$i-&gt;link.&#x27;&quot;&gt;&#x27;.$i-&gt;title.&#x27;&lt;/a&gt;&lt;/li&gt;&#x27;;
+    }
+    echo &#x27;&lt;/ul&gt;&lt;/div&gt;&#x27;;
+  }
+}</code></pre>
+
+    <p>Using <a href="http://www.phpied.com/simultaneuos-http-requests-in-php-with-curl/">Stoyan's Multi Curl function</a> you already realise quite an increase in speed.</p> 
+
+<a href="http://www.flickr.com/photos/codepo8/4167648386/"><img src="http://farm3.static.flickr.com/2499/4167648386_f8b35cd1f2.jpg" alt="Retrieving five RSS feeds with multicurl takes about 2.8 seconds."></a>
+
+<pre><code>$data = array(
+  &#x27;http://code.flickr.com/blog/feed/rss/&#x27;,
+  &#x27;http://feeds.delicious.com/v2/rss/codepo8?count=15&#x27;,
+  &#x27;http://www.stevesouders.com/blog/feed/rss&#x27;,
+  &#x27;http://www.yqlblog.net/blog/feed/&#x27;,
+  &#x27;http://www.quirksmode.org/blog/index.xml&#x27;
+);
+$r = multiRequest($data);
+display($r);
+
+function multiRequest($data, $options = array()) {
+  // array of curl handles
+  $curly = array();
+  // data to be returned
+  $result = array();
+  // multi handle
+  $mh = curl_multi_init();
+  // loop through $data and create curl handles
+  // then add them to the multi-handle
+  foreach ($data as $id =&gt; $d) {
+    $curly[$id] = curl_init();
+    $url = (is_array($d) &amp;&amp; !empty($d[&#x27;url&#x27;])) ? $d[&#x27;url&#x27;] : $d;
+    curl_setopt($curly[$id], CURLOPT_URL,            $url);
+    curl_setopt($curly[$id], CURLOPT_HEADER,         0);
+    curl_setopt($curly[$id], CURLOPT_RETURNTRANSFER, 1);
+    // post?
+    if (is_array($d)) {
+      if (!empty($d[&#x27;post&#x27;])) {
+        curl_setopt($curly[$id], CURLOPT_POST,       1);
+        curl_setopt($curly[$id], CURLOPT_POSTFIELDS, $d[&#x27;post&#x27;]);
+      }
+    }
+    // extra options?
+    if (!empty($options)) {
+      curl_setopt_array($curly[$id], $options);
+    }
+    curl_multi_add_handle($mh, $curly[$id]);
+  }
+  // execute the handles
+  $running = null;
+  do {
+    curl_multi_exec($mh, $running);
+  } while($running &gt; 0);
+  // get content and remove handles
+  foreach($curly as $id =&gt; $c) {
+    $result[$id] = curl_multi_getcontent($c);
+    curl_multi_remove_handle($mh, $c);
+  }
+  // all done
+  curl_multi_close($mh);
+  return $result;
+}
+function display($data){
+  foreach($data as $d){
+    $obj = simplexml_load_string($d);
+    echo &#x27;&lt;div&gt;&lt;h2&gt;&lt;a href=&quot;&#x27;.$obj-&gt;channel-&gt;link.&#x27;&quot;&gt;&#x27;.
+          $obj-&gt;channel-&gt;title.&#x27;&lt;/a&gt;&lt;/h2&gt;&#x27;;
+    echo &#x27;&lt;ul&gt;&#x27;;
+    foreach($obj-&gt;channel-&gt;item as $i){
+      echo &#x27;&lt;li&gt;&lt;a href=&quot;&#x27;.$i-&gt;link.&#x27;&quot;&gt;&#x27;.$i-&gt;title.&#x27;&lt;/a&gt;&lt;/li&gt;&#x27;;
+    }
+    echo &#x27;&lt;/ul&gt;&lt;/div&gt;&#x27;;
+  }
+}</code></pre>
+
+    <p>However, there are still two things that are annoying:</p>
+
+    <ul>
+      <li>You pull far more data than you really need</li> 
+      <li>You do all the request from your server</li>
+    </ul>
+
+    <p><a href="http://pipes.yahoo.com">Yahoo Pipes</a> has been used for that kind of task for quite a while, but the issue was that it is a visual interface and therefore hard to maintain. The server was also not the best performing out there.</p>
+
+    <p>The good news is that there is a new(er) kid on the block in Yahoo Land called <a href="http://developer.yahoo.com/yql">YQL</a> running on a massively fast server farm and with one purpose: making it easier to use web services, mix them and get only the data back that you want.</p>
+
+    <p>YQL in itself is a web service and you post queries to it that access other web services in a SQL style syntax. Normally you'd get RSS feeds using the RSS table, like so:</p>
+
+    <pre><code>select * from rss where url="http://feeds.delicious.com/v2/rss/codepo8?count=15"</code></pre>
+
+    <p>See the <a href="http://developer.yahoo.com/yql/console/?q=select%20*%20from%20rss%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22">single RSS in the YQL console</a> (you need a Yahoo account to log in). You can also see the <a href="http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20rss%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22&format=xml">single RSS retrieval output</a>.</p>
+
+    <p>The issue with this is that it only retrieves the items of the RSS feed and not the title, which we need for the headings. Therefore we need to use the XML table:</p>
+
+    <pre><code>select * from xml where url="http://feeds.delicious.com/v2/rss/codepo8?count=15"</code></pre>
+
+    <p>See the <a href="http://developer.yahoo.com/yql/console/?q=select%20*%20from%20xml%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22">single XML in the YQL console</a> (you need a Yahoo account to log in). You can also see the <a href="http://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20xml%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22&format=xml">single XML retrieval output</a>.</p>
+
+    <p>This gives us the same data the normal cURL calls give us. The cool thing about YQL is though that you can filter the data you get back to the bare minimum. In our case, this means replacing the * with the title and the link of the feed and of the items:</p>
+
+    <pre><code>select channel.title,channel.link,channel.item.title,channel.item.link from xml where url="http://feeds.delicious.com/v2/rss/codepo8?count=15"</code></pre>
+
+    <p>See the <a href="http://developer.yahoo.com/yql/console/?q=select%20channel.title%2Cchannel.link%2Cchannel.item.title%2Cchannel.item.link%20from%20xml%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22">filtered RSS in the YQL console</a> (you need a Yahoo account to log in). You can also see the <a href="http://query.yahooapis.com/v1/public/yql?q=select%20channel.title%2Cchannel.link%2Cchannel.item.title%2Cchannel.item.link%20from%20xml%20where%20url%3D%22http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%22&format=xml">filtered RSS retrieval output</a>.</p>
+
+    <p>In order to use this with all of our RSS feeds, we can use the <code>in()</code> command:</p>
+
+    <pre><code>select channel.title,channel.link,channel.item.title,channel.item.link 
+    from xml where url in(
+      'http://code.flickr.com/blog/feed/rss/',
+      'http://feeds.delicious.com/v2/rss/codepo8?count=15',
+      'http://www.stevesouders.com/blog/feed/rss',
+      'http://www.yqlblog.net/blog/feed/',
+      'http://www.quirksmode.org/blog/index.xml'
+    )</code></pre>
+
+    <p>Check the <a href="http://developer.yahoo.com/yql/console/?q=select%20channel.title%2Cchannel.link%2Cchannel.item.title%2Cchannel.item.link%20from%20xml%20where%20url%20in%28%27http%3A%2F%2Fcode.flickr.com%2Fblog%2Ffeed%2Frss%2F%27%2C%27http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15%27%2C%27http%3A%2F%2Fwww.stevesouders.com%2Fblog%2Ffeed%2Frss%27%2C%27http%3A%2F%2Fwww.yqlblog.net%2Fblog%2Ffeed%2F%27%2C%27http%3A%2F%2Fwww.quirksmode.org%2Fblog%2Findex.xml%27%29">aggregation in the console</a> or the <a href="http://query.yahooapis.com/v1/yql?q=select%20channel.title%2Cchannel.link%2Cchannel.item.title%2Cchannel.item.link%20from%20xml%20where%20url%20in('http%3A%2F%2Fcode.flickr.com%2Fblog%2Ffeed%2Frss%2F'%2C'http%3A%2F%2Ffeeds.delicious.com%2Fv2%2Frss%2Fcodepo8%3Fcount%3D15'%2C'http%3A%2F%2Fwww.stevesouders.com%2Fblog%2Ffeed%2Frss'%2C'http%3A%2F%2Fwww.yqlblog.net%2Fblog%2Ffeed%2F'%2C'http%3A%2F%2Fwww.quirksmode.org%2Fblog%2Findex.xml')&format=xml">aggregation output</a>.</p>
+
+    <p>This leaves all the hard work to the Yahoo Server farm. YQL pulls all the RSS feeds, adds one after the other and then gives it back to us as XML. We could simply use the generated URL from the console, but it is much more versatile to assemble the query in PHP:</p>
+
+<pre><code>$data = array(
+  &#x27;http://code.flickr.com/blog/feed/rss/&#x27;,
+  &#x27;http://feeds.delicious.com/v2/rss/codepo8?count=15&#x27;,
+  &#x27;http://www.stevesouders.com/blog/feed/rss&#x27;,
+  &#x27;http://www.yqlblog.net/blog/feed/&#x27;,
+  &#x27;http://www.quirksmode.org/blog/index.xml&#x27;
+);
+$url =&#x27;http://query.yahooapis.com/v1/public/yql?q=&#x27;;
+$query = &quot;select channel.title,channel.link,channel.item.title,channel.item.link from xml where url in(&#x27;&quot;.implode(&quot;&#x27;,&#x27;&quot;,$data).&quot;&#x27;)&quot;;
+$url.=urlencode($query).&#x27;&amp;format=xml&#x27;;
+$content = get($url);
+display($content);
+function get($url){
+  $ch = curl_init(); 
+  curl_setopt($ch, CURLOPT_URL, $url); 
+  curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); 
+  $output = curl_exec($ch); 
+  curl_close($ch);
+  return $output;
+}
+function display($data){
+  $data = simplexml_load_string($data);
+  $sets = $data-&gt;results-&gt;rss;
+  $all = sizeof($sets);
+  for($i=0;$i&lt;$all;$i++){
+    $r = $sets[$i];
+    $title = $r-&gt;channel-&gt;title.&#x27;&#x27;;
+    if($title != $oldtitle){
+      echo &#x27;&lt;div&gt;&lt;h2&gt;&lt;a href=&quot;&#x27;.($r-&gt;channel-&gt;link.&#x27;&#x27;).&#x27;&quot;&gt;&#x27;.
+           ($r-&gt;channel-&gt;title.&#x27;&#x27;).&#x27;&lt;/a&gt;&lt;/h2&gt;&lt;ul&gt;&#x27;;
+    }
+      echo &#x27;&lt;li&gt;&lt;a href=&quot;&#x27;.($r-&gt;channel-&gt;item-&gt;link.&#x27;&#x27;).&#x27;&quot;&gt;&#x27;.
+           ($r-&gt;channel-&gt;item-&gt;title.&#x27;&#x27;).&#x27;&lt;/a&gt;&lt;/li&gt;&#x27;;
+    if($title != $sets[$i+1]-&gt;channel-&gt;title.&#x27;&#x27;){
+      echo &#x27;&lt;/ul&gt;&lt;/div&gt;&#x27;;
+    }
+    $oldtitle = $r-&gt;channel-&gt;title.&#x27;&#x27;;
+  };
+}</code></pre>
+
+    <p>As you can see the loop to display the different RSS feeds a bit clunky and we could <a href="http://developer.yahoo.com/yql/guide/yql-execute-chapter.html">use an open YQL table</a> to move the <a href="http://www.wait-till-i.com/2009/11/30/turning-a-web-folder-with-data-into-an-api-using-yql-execute/">whole conversion to a server-side JavaScript</a>. However, as it is the performance of this way of retrieving the RSS feeds beats all the others hands-down already:</p>
+    
+<a href="http://www.flickr.com/photos/codepo8/4167653900/"><img src="http://farm3.static.flickr.com/2643/4167653900_91d2c5dca6.jpg" alt="Retrieving five RSS feeds using YQL takes about half a second"></a>
+
+<p>You can try it yourself, <a href="http://github.com/codepo8/yql-rss-speed-comparison">get the demo code from GitHub and run it on your own server</a> to see the magic of YQL.</p>
+
+  </div>
+  <div id="ft" role="contentinfo"><p></p></div>
+</div>
+</body>
+</html>
+
+
+
