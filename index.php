@@ -17,6 +17,7 @@
 <iframe src="simplecurl.php"></iframe>
 <iframe src="multicurl.php"></iframe>
 <iframe src="yqlcurl.php"></iframe>
+<iframe src="yqltable.php"></iframe>
   </div>
   <div id="ft" role="contentinfo"><p>Written by <a href="http://wait-till-i.com">Christian Heilmann</a></p></div>
 </div>
